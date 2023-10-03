@@ -18,6 +18,8 @@
 
 #define EC_TIMEOUTMON 500
 
+#define CHK_TIMEOUT 60
+
 char IOmap[4096];
 OSAL_THREAD_HANDLE thread1;
 int expectedWKC;
@@ -36,7 +38,7 @@ void simpletest(char *ifname, int cyclic_num)
 	printf("Starting simple test\n");
 
 	/* initialise SOEM, bind socket to ifname */
-	chk = 30;
+	chk = CHK_TIMEOUT;
 	do
 	{
 		if (ec_init(ifname)) {
@@ -54,7 +56,7 @@ void simpletest(char *ifname, int cyclic_num)
 	}
 	printf("ec_init on %s succeeded.\n", ifname);
 
-	chk1 = 30;
+	chk1 = CHK_TIMEOUT;
 	do
 	{
 		/* find and auto-config slaves */
@@ -106,7 +108,7 @@ void simpletest(char *ifname, int cyclic_num)
 			ec_receive_processdata(EC_TIMEOUTRET);
 			/* request OP state for all slaves */
 			ec_writestate(0);
-			chk = 20;
+			chk = CHK_TIMEOUT;
 			/* wait for all slaves to reach OP state */
 			do
 			{
@@ -137,7 +139,7 @@ void simpletest(char *ifname, int cyclic_num)
 							/* Copy data in input buffer to output buffer */
 							memcpy(ec_slave[k].outputs, ec_slave[k].inputs, oloop);
 
-							printf(" [Slave %d 0x%04x 0x%04x] O:", k, ec_slave[k].configadr, ec_slave[k].aliasadr);
+							printf(" [Slave %d 0x%04x] O:", k, ec_slave[k].configadr);
 							for(j = 0 ; j < oloop; j++)
 							{
 								printf(" %2.2x", *(ec_slave[k].outputs + j));
@@ -285,7 +287,7 @@ int main(int argc, char *argv[])
 		ec_adaptert * adapter = NULL;
 		printf("Usage: simple_test [ifname] [count]\n");
 		printf("  ifname = Ethernet interface (eth0 for example)\n");
-		printf("  count = Number of test (default:)\n");
+		printf("  count = Number of test (-1:Nonstop)\n");
 
 		printf ("\nAvailable adapters:\n");
 		adapter = ec_find_adapters ();
