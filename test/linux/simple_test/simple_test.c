@@ -132,26 +132,29 @@ void simpletest(char *ifname, int cyclic_num)
 					ec_send_processdata();
 					wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
-					if((!quiet) && (wkc >= expectedWKC))
+					if(wkc >= expectedWKC)
 					{
-						printf("Processdata cycle %4d, WKC %d :\n", i, wkc);
+						if (!quiet) printf("Processdata cycle %4d, WKC %d :\n", i, wkc);
 
 						for(k = 1; k <= ec_slavecount ; k++) {
 							/* Copy data in input buffer to output buffer */
 							memcpy(ec_slave[k].outputs, ec_slave[k].inputs, oloop);
-
-							printf(" [Slave %d 0x%04x] O:", k, ec_slave[k].configadr);
-							for(j = oloop - 1 ; j >= 0; j--)
+							/* Dump data of each slaves */
+							if (!quiet)
 							{
-								printf("%2.2x", *(ec_slave[k].outputs + j));
+								printf(" [Slave %d 0x%04x] O:", k, ec_slave[k].configadr);
+								for(j = oloop - 1 ; j >= 0; j--)
+								{
+									printf("%2.2x", *(ec_slave[k].outputs + j));
+								}
+								printf(" I:");
+								for(j = iloop - 1 ; j >= 0; j--)
+								{
+									printf("%2.2x", *(ec_slave[k].inputs + j));
+								}
+								printf(" T:%"PRId64"\n",ec_DCtime);
+								needlf = TRUE;
 							}
-							printf(" I:");
-							for(j = iloop - 1 ; j >= 0; j--)
-							{
-								printf("%2.2x", *(ec_slave[k].inputs + j));
-							}
-							printf(" T:%"PRId64"\n",ec_DCtime);
-							needlf = TRUE;
 						}
 					}
 					osal_usleep(5000);
@@ -272,14 +275,11 @@ int main(int argc, char *argv[])
 	int cyclic_num = -1;
 	printf("SOEM (Simple Open EtherCAT Master)\nSimple test\n");
 
-	if (argc > 1)
+	if ((argc > 1) && (argv[1][0] == '-') && (argv[1][1] == 'q'))
 	{
-		printf("[%s|%d] (%d) %s\n", __func__, __LINE__, argc, *argv);
-		if ((argv[1][0] == '-') && (argv[1][1] == 'q')) {
-			quiet = 1;
-			argc--;
-			argv++;
-		}
+		quiet = 1;
+		argc--;
+		argv++;
 	}
 
 	if (argc > 1)
