@@ -119,7 +119,10 @@ void simpletest(char *ifname, int cyclic_num)
 				ec_statecheck(0, EC_STATE_OPERATIONAL, 1000000);
 			}
 			while (chk-- && (ec_slave[0].state != EC_STATE_OPERATIONAL));
-			printf("\n");
+			if (!chk && (ec_slave[0].state != EC_STATE_OPERATIONAL)) {
+				printf("Wait for all slaves to reach OP state, timeout....\n");
+				continue;
+			}
 
 			if (ec_slave[0].state == EC_STATE_OPERATIONAL )
 			{
@@ -297,10 +300,11 @@ int main(int argc, char *argv[])
 	{
 		ec_adaptert * adapter = NULL;
 		printf("Usage: simple_test [-q] [ifname] [count]\n");
-		printf("  ifname = Ethernet interface (eth0 for example)\n");
-		printf("  count = Number of test (-1:Nonstop)\n");
+		printf("  -q : Quiet mode\n");
+		printf("  ifname : Ethernet interface (eth0 for example)\n");
+		printf("  count : Number of test (-1:Nonstop)\n");
 
-		printf ("\nAvailable adapters:\n");
+		printf ("\nAvailable adapters (ifname):\n");
 		adapter = ec_find_adapters ();
 		while (adapter != NULL)
 		{
