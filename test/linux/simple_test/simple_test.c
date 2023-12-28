@@ -300,9 +300,9 @@ int main(int argc, char *argv[])
 	{
 		ec_adaptert * adapter = NULL;
 		printf("Usage: simple_test [-q] [ifname] [count]\n");
-		printf("  -q : Quiet mode\n");
+		printf("  -q     : Quiet mode\n");
 		printf("  ifname : Ethernet interface (eth0 for example)\n");
-		printf("  count : Number of test (-1:Nonstop)\n");
+		printf("  count  : Number of test (-1:Nonstop)\n");
 
 		printf ("\nAvailable adapters (ifname):\n");
 		adapter = ec_find_adapters ();
