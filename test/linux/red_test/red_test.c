@@ -26,12 +26,13 @@
 
 #define NSEC_PER_SEC 1000000000
 #define EC_TIMEOUTMON 500
+#define CHK_TIMEOUT 60
 
 struct sched_param schedp;
 char IOmap[4096];
 pthread_t thread1, thread2;
 struct timeval tv, t1, t2;
-int dorun = 0;
+long long int dorun = 0;
 int deltat, tmax = 0;
 int64 toff, gl_delta;
 int DCdiff;
@@ -44,114 +45,150 @@ boolean needlf;
 volatile int wkc;
 boolean inOP;
 uint8 currentgroup = 0;
+int quiet = 0;
 
 
 void redtest(char *ifname, char *ifname2)
 {
-	int cnt, i, j, oloop, iloop;
+	int cnt, i, j, k, oloop, iloop, chk, chk1;
 
 	printf("Starting Redundant test\n");
 
-	/* initialise SOEM, bind socket to ifname */
-	if (ec_init_redundant(ifname, ifname2))
+	chk = CHK_TIMEOUT;
+	do
 	{
-		printf("ec_init on %s succeeded.\n",ifname);
-		/* find and auto-config slaves */
-		if ( ec_config(FALSE, &IOmap) > 0 )
+		/* initialise SOEM, bind socket to ifname */
+		if (ec_init_redundant(ifname, ifname2))
 		{
-			printf("%d slaves found and configured.\n",ec_slavecount);
-			/* wait for all slaves to reach SAFE_OP state */
-			ec_statecheck(0, EC_STATE_SAFE_OP,  EC_TIMEOUTSTATE);
+			printf("ec_init on %s and %s succeeded.\n", ifname, ifname2);
+			break;
+		}
+	}
+	while (chk--);
+	printf("\n");
 
-			/* configure DC options for every DC capable slave found in the list */
-			ec_configdc();
-
-			/* read indevidual slave state and store in ec_slave[] */
-			ec_readstate();
-			for(cnt = 1; cnt <= ec_slavecount ; cnt++)
+	if (chk <= 0) {
+		printf("No socket connection on %s or %s\nExit.\n", ifname, ifname2);
+		return;
+	} else {
+		printf("ec_init on %s and %s succeeded.\n", ifname, ifname2);
+		chk1 = CHK_TIMEOUT;
+		do
+		{
+			/* find and auto-config slaves */
+			if ( ec_config(FALSE, &IOmap) > 0 )
 			{
-				printf("Slave:%d Name:%s Output size:%3dbits Input size:%3dbits State:%2d delay:%d.%d\n",
-						cnt, ec_slave[cnt].name, ec_slave[cnt].Obits, ec_slave[cnt].Ibits,
-						ec_slave[cnt].state, (int)ec_slave[cnt].pdelay, ec_slave[cnt].hasdc);
-				printf("         Out:%p,%4d In:%p,%4d\n",
-						ec_slave[cnt].outputs, ec_slave[cnt].Obytes, ec_slave[cnt].inputs, ec_slave[cnt].Ibytes);
-				/* check for EL2004 or EL2008 */
-				if( !digout && ((ec_slave[cnt].eep_id == 0x0af83052) || (ec_slave[cnt].eep_id == 0x07d83052)))
-				{
-					digout = ec_slave[cnt].outputs;
-				}
-			}
-			expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
-			printf("Calculated workcounter %d\n", expectedWKC);
+				printf("%d slaves found and configured.\n",ec_slavecount);
+				/* wait for all slaves to reach SAFE_OP state */
+				ec_statecheck(0, EC_STATE_SAFE_OP,  EC_TIMEOUTSTATE);
 
-			printf("Request operational state for all slaves\n");
-			ec_slave[0].state = EC_STATE_OPERATIONAL;
-			/* request OP state for all slaves */
-			ec_writestate(0);
-			/* activate cyclic process data */
-			dorun = 1;
-			/* wait for all slaves to reach OP state */
-			ec_statecheck(0, EC_STATE_OPERATIONAL,  5 * EC_TIMEOUTSTATE);
-			oloop = ec_slave[0].Obytes;
-			if ((oloop == 0) && (ec_slave[0].Obits > 0)) oloop = 1;
-			if (oloop > 8) oloop = 8;
-			iloop = ec_slave[0].Ibytes;
-			if ((iloop == 0) && (ec_slave[0].Ibits > 0)) iloop = 1;
-			if (iloop > 8) iloop = 8;
-			if (ec_slave[0].state == EC_STATE_OPERATIONAL )
-			{
-				printf("Operational state reached for all slaves.\n");
-				inOP = TRUE;
-				/* acyclic loop 5000 x 20ms = 10s */
-				for(i = 1; i <= 5000; i++)
+				/* configure DC options for every DC capable slave found in the list */
+				ec_configdc();
+
+				/* read indevidual slave state and store in ec_slave[] */
+				ec_readstate();
+				for(cnt = 1; cnt <= ec_slavecount ; cnt++)
 				{
-					printf("Processdata cycle %5d , Wck %3d, DCtime %12"PRId64", dt %12"PRId64", O:",
-						dorun, wkc , ec_DCtime, gl_delta);
-					for(j = oloop - 1 ; j >= 0; j--)
+					printf("Slave:%d Name:%s Output size:%3dbits Input size:%3dbits State:%2d delay:%d.%d\n",
+							cnt, ec_slave[cnt].name, ec_slave[cnt].Obits, ec_slave[cnt].Ibits,
+							ec_slave[cnt].state, (int)ec_slave[cnt].pdelay, ec_slave[cnt].hasdc);
+					printf("         Out:%p,%4d In:%p,%4d\n",
+							ec_slave[cnt].outputs, ec_slave[cnt].Obytes, ec_slave[cnt].inputs, ec_slave[cnt].Ibytes);
+					/* check for EL2004 or EL2008 */
+					if( !digout && ((ec_slave[cnt].eep_id == 0x0af83052) || (ec_slave[cnt].eep_id == 0x07d83052)))
 					{
-						printf("%2.2x", *(ec_slave[0].outputs + j));
+						digout = ec_slave[cnt].outputs;
 					}
-					printf(" I:");
-					for(j = iloop - 1 ; j >= 0; j--)
-					{
-						printf("%2.2x", *(ec_slave[0].inputs + j));
-					}
-					printf("\r");
-					fflush(stdout);
-					osal_usleep(20000);
 				}
-				dorun = 0;
-				inOP = FALSE;
+				expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
+				printf("Calculated workcounter %d\n", expectedWKC);
+
+				printf("Request operational state for all slaves\n");
+				ec_slave[0].state = EC_STATE_OPERATIONAL;
+
+				/* request OP state for all slaves */
+				ec_writestate(0);
+
+				/* activate cyclic process data */
+				dorun = 1;
+
+				/* wait for all slaves to reach OP state */
+				ec_statecheck(0, EC_STATE_OPERATIONAL,  5 * EC_TIMEOUTSTATE);
+				oloop = ec_slave[0].Obytes;
+				if ((oloop == 0) && (ec_slave[0].Obits > 0)) oloop = 1;
+				if (oloop > 8) oloop = 8;
+				iloop = ec_slave[0].Ibytes;
+				if ((iloop == 0) && (ec_slave[0].Ibits > 0)) iloop = 1;
+				if (iloop > 8) iloop = 8;
+
+				/* Clean input/output buffer */
+				printf("Clean buffer, oloop : %d , iloop: %d\n", oloop, iloop);
+				for(k = 1; k <= ec_slavecount ; k++) {
+					// printf("Slave %d [%s] found.\n", k, ec_slave[k].name);
+					memset(ec_slave[k].outputs, 0, oloop);
+					memset(ec_slave[k].inputs, 0, iloop);
+				}
+
+				if (ec_slave[0].state == EC_STATE_OPERATIONAL )
+				{
+					printf("Operational state reached for all slaves.\n");
+					inOP = TRUE;
+					/* acyclic loop */
+					while(1)
+					{
+						if (!quiet) {
+							printf("Processdata cycle %5lld , Wck %3d :\n", dorun, wkc);
+
+							for(k = 1; k <= ec_slavecount ; k++) {
+								printf(" [Slave %d 0x%04x] O:", k, ec_slave[k].configadr);
+								for(j = oloop - 1 ; j >= 0; j--)
+								{
+									printf("%2.2x", *(ec_slave[k].outputs + j));
+								}
+								printf(" I:");
+								for(j = iloop - 1 ; j >= 0; j--)
+								{
+									printf("%2.2x", *(ec_slave[k].inputs + j));
+								}
+								printf(" T:%12"PRId64", dt:%12"PRId64"\n", ec_DCtime, gl_delta);
+								needlf = TRUE;
+								fflush(stdout);
+							}
+						}
+						osal_usleep(20000);
+					}
+					dorun = 0;
+					inOP = FALSE;
+				}
+				else
+				{
+					printf("Not all slaves reached operational state.\n");
+					ec_readstate();
+					for(i = 1; i<=ec_slavecount ; i++)
+					{
+						if(ec_slave[i].state != EC_STATE_OPERATIONAL)
+						{
+								printf("Slave %d State=0x%2.2x StatusCode=0x%4.4x : %s\n",
+									i, ec_slave[i].state, ec_slave[i].ALstatuscode, ec_ALstatuscode2string(ec_slave[i].ALstatuscode));
+						}
+					}
+				}
+				printf("Request safe operational state for all slaves\n");
+				ec_slave[0].state = EC_STATE_SAFE_OP;
+				/* request SAFE_OP state for all slaves */
+				ec_writestate(0);
 			}
 			else
 			{
-				printf("Not all slaves reached operational state.\n");
-				 ec_readstate();
-				 for(i = 1; i<=ec_slavecount ; i++)
-				 {
-					  if(ec_slave[i].state != EC_STATE_OPERATIONAL)
-					  {
-							printf("Slave %d State=0x%2.2x StatusCode=0x%4.4x : %s\n",
-								 i, ec_slave[i].state, ec_slave[i].ALstatuscode, ec_ALstatuscode2string(ec_slave[i].ALstatuscode));
-					  }
-				 }
+				printf("No slaves found!, Retry %d.    \r", chk1); fflush(stdout);
+				osal_usleep(1000000);
 			}
-			printf("Request safe operational state for all slaves\n");
-			ec_slave[0].state = EC_STATE_SAFE_OP;
-			/* request SAFE_OP state for all slaves */
-			ec_writestate(0);
-		}
-		else
-		{
-			printf("No slaves found!\n");
-		}
+
+		} while (chk1--);
+		printf("\n");
 		printf("End redundant test, close socket\n");
 		/* stop SOEM, close socket */
 		ec_close();
-	}
-	else
-	{
-		printf("No socket connection on %s\nExcecute as root\n",ifname);
 	}
 }
 
@@ -190,7 +227,7 @@ void ec_sync(int64 reftime, int64 cycletime , int64 *offsettime)
 OSAL_THREAD_FUNC_RT ecatthread(void *ptr)
 {
 	struct timespec   ts, tleft;
-	int ht;
+	int ht, k;
 	int64 cycletime;
 
 	clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -213,7 +250,13 @@ OSAL_THREAD_FUNC_RT ecatthread(void *ptr)
 		if (dorun>0)
 		{
 			wkc = ec_receive_processdata(EC_TIMEOUTRET);
-
+			if(wkc >= expectedWKC)
+			{
+				for(k = 1; k <= ec_slavecount ; k++) {
+					/* Copy data in input buffer to output buffer */
+					memcpy(ec_slave[k].outputs, ec_slave[k].inputs, ec_slave[k].Obytes);
+				}
+			}
 			dorun++;
 			/* if we have some digital output, cycle */
 			if( digout ) *digout = (uint8) ((dorun / 16) & 0xff);
@@ -314,6 +357,13 @@ int main(int argc, char *argv[])
 
 	printf("SOEM (Simple Open EtherCAT Master)\nRedundancy test\n");
 
+	if ((argc > 1) && (argv[1][0] == '-') && (argv[1][1] == 'q'))
+	{
+		quiet = 1;
+		argc--;
+		argv++;
+	}
+
 	if (argc > 3)
 	{
 		dorun = 0;
@@ -330,7 +380,21 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		printf("Usage: red_test ifname1 ifname2 cycletime\nifname = eth0 for example\ncycletime in us\n");
+		printf("Usage: red_test [-q] [ifname1] [ifname2] [cy_time]\n");
+		printf("  -q     : Quiet mode\n");
+		printf("  ifname1 : Primary Dev name, f.e. eth0\n");
+		printf("  ifname2 : Secondary Dev name, f.e. eth1\n");
+		printf("  cy_time : Cycle time in us\n");
+
+		printf ("\nAvailable adapters (ifname):\n");
+		ec_adaptert * adapter = NULL;
+		adapter = ec_find_adapters ();
+		while (adapter != NULL)
+		{
+			printf ("    - %s  (%s)\n", adapter->name, adapter->desc);
+			adapter = adapter->next;
+		}
+		ec_free_adapters(adapter);
 	}
 
 	printf("End program\n");

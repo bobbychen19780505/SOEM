@@ -155,7 +155,7 @@ void simpletest(char *ifname, int cyclic_num)
 								{
 									printf("%2.2x", *(ec_slave[k].inputs + j));
 								}
-								printf(" T:%"PRId64"\n",ec_DCtime);
+								printf(" T:%"PRId64"\n", ec_DCtime);
 								needlf = TRUE;
 							}
 						}
