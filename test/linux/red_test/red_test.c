@@ -60,9 +60,10 @@ void redtest(char *ifname, char *ifname2)
 		/* initialise SOEM, bind socket to ifname */
 		if (ec_init_redundant(ifname, ifname2))
 		{
-			printf("ec_init on %s and %s succeeded.\n", ifname, ifname2);
 			break;
 		}
+		printf("No socket connection on %s and %s, Retry %d.    \r", ifname, ifname2, chk); fflush(stdout);
+		osal_usleep(1000000);
 	}
 	while (chk--);
 	printf("\n");
@@ -71,7 +72,7 @@ void redtest(char *ifname, char *ifname2)
 		printf("No socket connection on %s or %s\nExit.\n", ifname, ifname2);
 		return;
 	} else {
-		printf("ec_init on %s and %s succeeded.\n", ifname, ifname2);
+		printf("ec_init_redundant on %s and %s succeeded.\n", ifname, ifname2);
 		chk1 = CHK_TIMEOUT;
 		do
 		{
@@ -273,80 +274,80 @@ OSAL_THREAD_FUNC_RT ecatthread(void *ptr)
 
 OSAL_THREAD_FUNC ecatcheck( void *ptr )
 {
-	 int slave;
+	int slave;
 
-	 (void) ptr;
+	(void) ptr;
 
-	 while(1)
-	 {
-		  if( inOP && ((wkc < expectedWKC) || ec_group[currentgroup].docheckstate))
-		  {
-				if (needlf)
+	while(1)
+	{
+		if( inOP && ((wkc < expectedWKC) || ec_group[currentgroup].docheckstate))
+		{
+			if (needlf)
+			{
+				needlf = FALSE;
+				printf("\n");
+			}
+			/* one ore more slaves are not responding */
+			ec_group[currentgroup].docheckstate = FALSE;
+			ec_readstate();
+			for (slave = 1; slave <= ec_slavecount; slave++)
+			{
+				if ((ec_slave[slave].group == currentgroup) && (ec_slave[slave].state != EC_STATE_OPERATIONAL))
 				{
-					needlf = FALSE;
-					printf("\n");
-				}
-				/* one ore more slaves are not responding */
-				ec_group[currentgroup].docheckstate = FALSE;
-				ec_readstate();
-				for (slave = 1; slave <= ec_slavecount; slave++)
-				{
-					if ((ec_slave[slave].group == currentgroup) && (ec_slave[slave].state != EC_STATE_OPERATIONAL))
+					ec_group[currentgroup].docheckstate = TRUE;
+					if (ec_slave[slave].state == (EC_STATE_SAFE_OP + EC_STATE_ERROR))
 					{
-						ec_group[currentgroup].docheckstate = TRUE;
-						if (ec_slave[slave].state == (EC_STATE_SAFE_OP + EC_STATE_ERROR))
-						{
-							printf("ERROR : slave %d is in SAFE_OP + ERROR, attempting ack.\n", slave);
-							ec_slave[slave].state = (EC_STATE_SAFE_OP + EC_STATE_ACK);
-							ec_writestate(slave);
-						}
-						else if(ec_slave[slave].state == EC_STATE_SAFE_OP)
-						{
-							printf("WARNING : slave %d is in SAFE_OP, change to OPERATIONAL.\n", slave);
-							ec_slave[slave].state = EC_STATE_OPERATIONAL;
-							ec_writestate(slave);
-						}
-						else if(ec_slave[slave].state > EC_STATE_NONE)
-						{
-							if (ec_reconfig_slave(slave, EC_TIMEOUTMON))
-							{
-								ec_slave[slave].islost = FALSE;
-								printf("MESSAGE : slave %d reconfigured\n",slave);
-							}
-						}
-						else if(!ec_slave[slave].islost)
-						{
-							/* re-check state */
-							ec_statecheck(slave, EC_STATE_OPERATIONAL, EC_TIMEOUTRET);
-							if (ec_slave[slave].state == EC_STATE_NONE)
-							{
-								ec_slave[slave].islost = TRUE;
-								printf("ERROR : slave %d lost\n",slave);
-							}
-						}
+						printf("ERROR : slave %d is in SAFE_OP + ERROR, attempting ack.\n", slave);
+						ec_slave[slave].state = (EC_STATE_SAFE_OP + EC_STATE_ACK);
+						ec_writestate(slave);
 					}
-					if (ec_slave[slave].islost)
+					else if(ec_slave[slave].state == EC_STATE_SAFE_OP)
 					{
-						if(ec_slave[slave].state == EC_STATE_NONE)
-						{
-							if (ec_recover_slave(slave, EC_TIMEOUTMON))
-							{
-								ec_slave[slave].islost = FALSE;
-								printf("MESSAGE : slave %d recovered\n",slave);
-							}
-						}
-						else
+						printf("WARNING : slave %d is in SAFE_OP, change to OPERATIONAL.\n", slave);
+						ec_slave[slave].state = EC_STATE_OPERATIONAL;
+						ec_writestate(slave);
+					}
+					else if(ec_slave[slave].state > EC_STATE_NONE)
+					{
+						if (ec_reconfig_slave(slave, EC_TIMEOUTMON))
 						{
 							ec_slave[slave].islost = FALSE;
-							printf("MESSAGE : slave %d found\n",slave);
+							printf("MESSAGE : slave %d reconfigured\n",slave);
+						}
+					}
+					else if(!ec_slave[slave].islost)
+					{
+						/* re-check state */
+						ec_statecheck(slave, EC_STATE_OPERATIONAL, EC_TIMEOUTRET);
+						if (ec_slave[slave].state == EC_STATE_NONE)
+						{
+							ec_slave[slave].islost = TRUE;
+							printf("ERROR : slave %d lost\n",slave);
 						}
 					}
 				}
-				if(!ec_group[currentgroup].docheckstate)
-					printf("OK : all slaves resumed OPERATIONAL.\n");
-		  }
-		  osal_usleep(10000);
-	 }
+				if (ec_slave[slave].islost)
+				{
+					if(ec_slave[slave].state == EC_STATE_NONE)
+					{
+						if (ec_recover_slave(slave, EC_TIMEOUTMON))
+						{
+							ec_slave[slave].islost = FALSE;
+							printf("MESSAGE : slave %d recovered\n",slave);
+						}
+					}
+					else
+					{
+						ec_slave[slave].islost = FALSE;
+						printf("MESSAGE : slave %d found\n",slave);
+					}
+				}
+			}
+			if(!ec_group[currentgroup].docheckstate)
+				printf("OK : all slaves resumed OPERATIONAL.\n");
+		}
+		osal_usleep(10000);
+	}
 }
 
 #define stack64k (64 * 1024)
@@ -376,7 +377,10 @@ int main(int argc, char *argv[])
 		osal_thread_create(&thread2, stack64k * 4, &ecatcheck, NULL);
 
 		/* start acyclic part */
-		redtest(argv[1], argv[2]);
+		while (1) {
+			redtest(argv[1], argv[2]);
+			printf("Redundancy test exit, re-load it.\n"); fflush(stdout);
+		}
 	}
 	else
 	{
