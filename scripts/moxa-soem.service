@@ -1,0 +1,10 @@
+[Unit]
+Description=Moxa SOEM service.
+After=network.target
+
+[Service]
+ExecStart=/bin/bash /usr/sbin/soem/start.sh
+
+[Install]
+WantedBy=multi-user.target
+
