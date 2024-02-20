@@ -135,13 +135,11 @@ void redtest(char *ifname, char *ifname2)
 					printf("Operational state reached for all slaves.\n");
 					inOP = TRUE;
 					/* acyclic loop */
-					while(1)
+					while(wkc > 0)
 					{
 						if (!quiet) {
-							printf("Processdata cycle %5lld , Wck %3d :\n", dorun, wkc);
-
 							for(k = 1; k <= ec_slavecount ; k++) {
-								printf(" [Slave %d 0x%04x] O:", k, ec_slave[k].configadr);
+								printf(" (%5lld, %3d) [Slave %d 0x%04x] O:", dorun, wkc, k, ec_slave[k].configadr);
 								for(j = oloop - 1 ; j >= 0; j--)
 								{
 									printf("%2.2x", *(ec_slave[k].outputs + j));

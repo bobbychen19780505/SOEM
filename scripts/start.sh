@@ -6,5 +6,5 @@ then
 fi
 
 echo "heartbeat" > /sys/class/leds/USR:green:programming/trigger
-/usr/sbin/soem/red_test -q eth0 eth1 10000
+/usr/sbin/soem/red_test eth0 eth1 100000
 

@@ -11,7 +11,7 @@ fi
 
 if [ -e "${EXE_BIN}" ] && [ -e "${START_SCRIPT}" ]
 then
-	mkdir /usr/sbin/soem
+	mkdir -p /usr/sbin/soem
 	cp -f ${EXE_BIN} /usr/sbin/soem
 	cp -f ${START_SCRIPT} /usr/sbin/soem
 fi

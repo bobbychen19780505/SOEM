@@ -1,6 +1,6 @@
 
 PACKAGE_NAME := "moxa-soem"
-VERSION := "1.0.0.0"
+VERSION := "1.0.0.1"
 ARCH := "all"
 MAINTAINER := "Bobby Chen \<bobby.chen@moxa.com\>"
 DEPENDS := ""
