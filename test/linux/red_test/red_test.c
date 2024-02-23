@@ -24,6 +24,10 @@
 
 #include "ethercat.h"
 
+#ifndef APP_VERSION
+#define APP_VERSION "1.0.0.2"
+#endif
+
 #define NSEC_PER_SEC 1000000000
 #define EC_TIMEOUTMON 500
 #define CHK_TIMEOUT 60
@@ -252,6 +256,10 @@ OSAL_THREAD_FUNC_RT ecatthread(void *ptr)
 			if(wkc >= expectedWKC)
 			{
 				for(k = 1; k <= ec_slavecount ; k++) {
+					if (*((uint64*)ec_slave[k].inputs) == 0) {
+						/* Set to 1 to tell slaves start test */
+						*((uint64*)ec_slave[k].inputs) = 1;
+					}
 					/* Copy data in input buffer to output buffer */
 					memcpy(ec_slave[k].outputs, ec_slave[k].inputs, ec_slave[k].Obytes);
 				}
@@ -354,7 +362,7 @@ int main(int argc, char *argv[])
 {
 	int ctime;
 
-	printf("SOEM (Simple Open EtherCAT Master)\nRedundancy test\n");
+	printf("SOEM (Simple Open EtherCAT Master)\nRedundancy test\nVersion %s\n", APP_VERSION);
 
 	if ((argc > 1) && (argv[1][0] == '-') && (argv[1][1] == 'q'))
 	{
