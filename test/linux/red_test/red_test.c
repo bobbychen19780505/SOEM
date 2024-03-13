@@ -24,10 +24,6 @@
 
 #include "ethercat.h"
 
-#ifndef APP_VERSION
-#define APP_VERSION "1.0.0.2"
-#endif
-
 #define NSEC_PER_SEC 1000000000
 #define EC_TIMEOUTMON 500
 #define CHK_TIMEOUT 60
@@ -129,9 +125,9 @@ void redtest(char *ifname, char *ifname2)
 				/* Clean input/output buffer */
 				printf("Clean buffer, oloop : %d , iloop: %d\n", oloop, iloop);
 				for(k = 1; k <= ec_slavecount ; k++) {
-					// printf("Slave %d [%s] found.\n", k, ec_slave[k].name);
-					memset(ec_slave[k].outputs, 0, oloop);
-					memset(ec_slave[k].inputs, 0, iloop);
+					printf("Slave %d [%s] found. (%u,%u,%u,%u)\n", k, ec_slave[k].name, ec_slave[k].Obytes, ec_slave[k].Obits, ec_slave[k].Ibytes, ec_slave[k].Ibits);
+					if (ec_slave[k].Obytes > 0) memset(ec_slave[k].outputs, 0, oloop);
+					if (ec_slave[k].Ibytes > 0) memset(ec_slave[k].inputs, 0, iloop);
 				}
 
 				if (ec_slave[0].state == EC_STATE_OPERATIONAL )
@@ -146,12 +142,12 @@ void redtest(char *ifname, char *ifname2)
 								printf(" (%5lld, %3d) [Slave %d 0x%04x] O:", dorun, wkc, k, ec_slave[k].configadr);
 								for(j = oloop - 1 ; j >= 0; j--)
 								{
-									printf("%2.2x", *(ec_slave[k].outputs + j));
+									if (ec_slave[k].Obytes > 0) printf("%2.2x", *(ec_slave[k].outputs + j));
 								}
 								printf(" I:");
 								for(j = iloop - 1 ; j >= 0; j--)
 								{
-									printf("%2.2x", *(ec_slave[k].inputs + j));
+									if (ec_slave[k].Ibytes > 0) printf("%2.2x", *(ec_slave[k].inputs + j));
 								}
 								printf(" T:%12"PRId64", dt:%12"PRId64"\n", ec_DCtime, gl_delta);
 								needlf = TRUE;
@@ -256,12 +252,14 @@ OSAL_THREAD_FUNC_RT ecatthread(void *ptr)
 			if(wkc >= expectedWKC)
 			{
 				for(k = 1; k <= ec_slavecount ; k++) {
-					if (*((uint64*)ec_slave[k].inputs) == 0) {
-						/* Set to 1 to tell slaves start test */
-						*((uint64*)ec_slave[k].inputs) = 1;
+					if (ec_slave[k].Ibytes > 0) {
+						if (*((uint64*)ec_slave[k].inputs) == 0) {
+							/* Set to 1 to tell slaves start test */
+							*((uint64*)ec_slave[k].inputs) = 1;
+						}
+						/* Copy data in input buffer to output buffer */
+						memcpy(ec_slave[k].outputs, ec_slave[k].inputs, ec_slave[k].Obytes);
 					}
-					/* Copy data in input buffer to output buffer */
-					memcpy(ec_slave[k].outputs, ec_slave[k].inputs, ec_slave[k].Obytes);
 				}
 			}
 			dorun++;
@@ -360,7 +358,7 @@ OSAL_THREAD_FUNC ecatcheck( void *ptr )
 
 int main(int argc, char *argv[])
 {
-	int ctime;
+	int ctime = 10000;
 
 	printf("SOEM (Simple Open EtherCAT Master)\nRedundancy test\nVersion %s\n", APP_VERSION);
 

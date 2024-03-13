@@ -30,7 +30,7 @@ uint8 currentgroup = 0;
 boolean forceByteAlignment = FALSE;
 int quiet = 0;
 
-void simpletest(char *ifname, int cyclic_num)
+void simpletest(char *ifname)
 {
 	int i, j, k, oloop, iloop, chk, chk1;
 	needlf = FALSE;
@@ -93,9 +93,9 @@ void simpletest(char *ifname, int cyclic_num)
 
 			printf("oloop : %d , iloop: %d\n", oloop, iloop);
 			for(k = 1; k <= ec_slavecount ; k++) {
-				printf("Slave %d [%s] found.\n", k, ec_slave[k].name);
-				memset(ec_slave[k].outputs, 0, oloop);
-				memset(ec_slave[k].inputs, 0, iloop);
+				printf("Slave %d [%s] found. (%u,%u,%u,%u)\n", k, ec_slave[k].name, ec_slave[k].Obytes, ec_slave[k].Obits, ec_slave[k].Ibytes, ec_slave[k].Ibits);
+					if (ec_slave[k].Obytes > 0) memset(ec_slave[k].outputs, 0, oloop);
+					if (ec_slave[k].Ibytes > 0) memset(ec_slave[k].inputs, 0, iloop);
 			}
 
 			printf("segments : %d : %d %d %d %d\n",ec_group[0].nsegments ,ec_group[0].IOsegment[0],ec_group[0].IOsegment[1],ec_group[0].IOsegment[2],ec_group[0].IOsegment[3]);
@@ -129,31 +129,36 @@ void simpletest(char *ifname, int cyclic_num)
 				printf("Operational state reached for all slaves.\n");
 				inOP = TRUE;
 				/* cyclic loop */
-				i = 1;
-				while (cyclic_num < 0 ? 1 : i <= cyclic_num)
+				do
 				{
 					ec_send_processdata();
 					wkc = ec_receive_processdata(EC_TIMEOUTRET);
 
 					if(wkc >= expectedWKC)
 					{
-						if (!quiet) printf("Processdata cycle %4d, WKC %d :\n", i, wkc);
+						if (!quiet) printf("Processdata data, WKC %d :\n", wkc);
 
 						for(k = 1; k <= ec_slavecount ; k++) {
-							/* Copy data in input buffer to output buffer */
-							memcpy(ec_slave[k].outputs, ec_slave[k].inputs, oloop);
+							if (ec_slave[k].Ibytes > 0) {
+								if (*((uint64*)ec_slave[k].inputs) == 0) {
+									/* Set to 1 to tell slaves start test */
+									*((uint64*)ec_slave[k].inputs) = 1;
+								}
+								/* Copy data in input buffer to output buffer */
+								memcpy(ec_slave[k].outputs, ec_slave[k].inputs, oloop);
+							}
 							/* Dump data of each slaves */
 							if (!quiet)
 							{
 								printf(" [Slave %d 0x%04x] O:", k, ec_slave[k].configadr);
 								for(j = oloop - 1 ; j >= 0; j--)
 								{
-									printf("%2.2x", *(ec_slave[k].outputs + j));
+									if (ec_slave[k].Obytes > 0) printf("%2.2x", *(ec_slave[k].outputs + j));
 								}
 								printf(" I:");
 								for(j = iloop - 1 ; j >= 0; j--)
 								{
-									printf("%2.2x", *(ec_slave[k].inputs + j));
+									if (ec_slave[k].Ibytes > 0) printf("%2.2x", *(ec_slave[k].inputs + j));
 								}
 								printf(" T:%"PRId64"\n", ec_DCtime);
 								needlf = TRUE;
@@ -161,8 +166,7 @@ void simpletest(char *ifname, int cyclic_num)
 						}
 					}
 					osal_usleep(5000);
-					i++;
-				}
+				} while (wkc > 0);
 				inOP = FALSE;
 			}
 			else
@@ -275,8 +279,9 @@ OSAL_THREAD_FUNC ecatcheck( void *ptr )
 
 int main(int argc, char *argv[])
 {
-	int cyclic_num = -1;
-	printf("SOEM (Simple Open EtherCAT Master)\nSimple test\n");
+	int ctime = 10000;
+
+	printf("SOEM (Simple Open EtherCAT Master)\nSimple test\nVersion %s\n", APP_VERSION);
 
 	if ((argc > 1) && (argv[1][0] == '-') && (argv[1][1] == 'q'))
 	{
@@ -287,22 +292,25 @@ int main(int argc, char *argv[])
 
 	if (argc > 1)
 	{
+		if (argc > 2) {
+			ctime = atoi(argv[2]);
+		}
 		/* create thread to handle slave error handling in OP */
 		// pthread_create( &thread1, NULL, (void *) &ecatcheck, (void*) &ctime);
 		osal_thread_create(&thread1, 128000, &ecatcheck, (void*) &ctime);
 		/* start cyclic part */
-		if (argc > 2) {
-			cyclic_num = atoi(argv[2]);
+		while (1) {
+			simpletest(argv[1]);
+			printf("Redundancy test exit, re-load it.\n"); fflush(stdout);
 		}
-		simpletest(argv[1], cyclic_num);
 	}
 	else
 	{
 		ec_adaptert * adapter = NULL;
-		printf("Usage: simple_test [-q] [ifname] [count]\n");
-		printf("  -q     : Quiet mode\n");
-		printf("  ifname : Ethernet interface (eth0 for example)\n");
-		printf("  count  : Number of test (-1:Nonstop)\n");
+		printf("Usage: simple_test [-q] [ifname] [cy_time]\n");
+		printf("  -q      : Quiet mode\n");
+		printf("  ifname  : Ethernet interface (eth0 for example)\n");
+		printf("  cy_time : Cycle time in us\n");
 
 		printf ("\nAvailable adapters (ifname):\n");
 		adapter = ec_find_adapters ();

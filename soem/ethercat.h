@@ -23,4 +23,8 @@
 #include "ethercatconfig.h"
 #include "ethercatprint.h"
 
+#ifndef APP_VERSION
+#define APP_VERSION "1.0.0.3"
+#endif
+
 #endif /* _EC_ETHERCAT_H */

@@ -1,6 +1,6 @@
 
 PACKAGE_NAME := "moxa-soem"
-VERSION := "1.0.0.2"
+VERSION := "1.0.0.3"
 ARCH := "all"
 MAINTAINER := "Bobby Chen \<bobby.chen@moxa.com\>"
 DEPENDS := ""
@@ -46,6 +46,8 @@ install:
 	@mkdir -p $(PREFIX)/usr/sbin/soem
 	@mkdir -p $(PREFIX)/lib/systemd/system
 	@cp -f ./build/test/linux/red_test/red_test $(PREFIX)/usr/sbin/soem
+	@cp -f ./build/test/linux/simple_test/simple_test $(PREFIX)/usr/sbin/soem
+	@cp -f ./build/test/linux/slaveinfo/slaveinfo $(PREFIX)/usr/sbin/soem
 	@cp -f ./scripts/start.sh $(PREFIX)/usr/sbin/soem
 	@cp -f ./scripts/moxa-soem.service $(PREFIX)/lib/systemd/system/moxa-soem.service
 
