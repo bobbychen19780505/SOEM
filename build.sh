@@ -7,7 +7,8 @@ build()
 {
 	mkdir -p ${BUILD_ROOT}
 	cd ${BUILD_ROOT}
-	cmake .. -DCMAKE_TOOLCHAIN_FILE="../${TOOLCHAIN_FILE}"
+	# cmake .. -DCMAKE_TOOLCHAIN_FILE="../${TOOLCHAIN_FILE}"
+	cmake ..
 	make clean
 	make
 }

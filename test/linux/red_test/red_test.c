@@ -26,7 +26,7 @@
 
 #define NSEC_PER_SEC 1000000000
 #define EC_TIMEOUTMON 500
-#define CHK_TIMEOUT 60
+#define CHK_TIMEOUT 30
 
 struct sched_param schedp;
 char IOmap[4096];
@@ -135,7 +135,7 @@ void redtest(char *ifname, char *ifname2)
 					printf("Operational state reached for all slaves.\n");
 					inOP = TRUE;
 					/* acyclic loop */
-					while(wkc > 0)
+					while(wkc > 0 && inOP)
 					{
 						if (!quiet) {
 							for(k = 1; k <= ec_slavecount ; k++) {
@@ -255,10 +255,11 @@ OSAL_THREAD_FUNC_RT ecatthread(void *ptr)
 					if (ec_slave[k].Ibytes > 0) {
 						if (*((uint64*)ec_slave[k].inputs) == 0) {
 							/* Set to 1 to tell slaves start test */
-							*((uint64*)ec_slave[k].inputs) = 1;
+							*((uint64*)ec_slave[k].outputs) = 1;
+						} else {
+							/* Copy data in input buffer to output buffer */
+							memcpy(ec_slave[k].outputs, ec_slave[k].inputs, ec_slave[k].Obytes);
 						}
-						/* Copy data in input buffer to output buffer */
-						memcpy(ec_slave[k].outputs, ec_slave[k].inputs, ec_slave[k].Obytes);
 					}
 				}
 			}
@@ -327,6 +328,7 @@ OSAL_THREAD_FUNC ecatcheck( void *ptr )
 						{
 							ec_slave[slave].islost = TRUE;
 							printf("ERROR : slave %d lost\n",slave);
+							inOP = FALSE;
 						}
 					}
 				}

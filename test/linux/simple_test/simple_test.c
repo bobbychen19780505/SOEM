@@ -18,7 +18,7 @@
 
 #define EC_TIMEOUTMON 500
 
-#define CHK_TIMEOUT 60
+#define CHK_TIMEOUT 30
 
 char IOmap[4096];
 OSAL_THREAD_HANDLE thread1;
@@ -68,13 +68,16 @@ void simpletest(char *ifname)
 			/* wait for all slaves to reach SAFE_OP state */
 			if (forceByteAlignment)
 			{
+				printf("Run IO mapping and force byte alignment.\n");
 				ec_config_map_aligned(&IOmap);
 			}
 			else
 			{
+				printf("Run IO mapping.\n");
 				ec_config_map(&IOmap);
 			}
 
+			printf("Configure DC options.\n");
 			ec_configdc();
 
 			printf("Slaves mapped, state to SAFE_OP.\n");
@@ -142,10 +145,11 @@ void simpletest(char *ifname)
 							if (ec_slave[k].Ibytes > 0) {
 								if (*((uint64*)ec_slave[k].inputs) == 0) {
 									/* Set to 1 to tell slaves start test */
-									*((uint64*)ec_slave[k].inputs) = 1;
+									*((uint64*)ec_slave[k].outputs) = 1;
+								} else {
+									/* Copy data in input buffer to output buffer */
+									memcpy(ec_slave[k].outputs, ec_slave[k].inputs, oloop);
 								}
-								/* Copy data in input buffer to output buffer */
-								memcpy(ec_slave[k].outputs, ec_slave[k].inputs, oloop);
 							}
 							/* Dump data of each slaves */
 							if (!quiet)
@@ -165,8 +169,8 @@ void simpletest(char *ifname)
 							}
 						}
 					}
-					osal_usleep(5000);
-				} while (wkc > 0);
+					osal_usleep(20000);
+				} while (wkc > 0 && inOP);
 				inOP = FALSE;
 			}
 			else
@@ -250,6 +254,7 @@ OSAL_THREAD_FUNC ecatcheck( void *ptr )
 						{
 							ec_slave[slave].islost = TRUE;
 							printf("ERROR : slave %d lost\n",slave);
+							inOP = FALSE;
 						}
 					}
 				}
@@ -301,7 +306,7 @@ int main(int argc, char *argv[])
 		/* start cyclic part */
 		while (1) {
 			simpletest(argv[1]);
-			printf("Redundancy test exit, re-load it.\n"); fflush(stdout);
+			printf("Simple test exit, re-load it.\n"); fflush(stdout);
 		}
 	}
 	else
