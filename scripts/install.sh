@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 
-EXE_DIR="../build/test/linux"
+ROOT=$(dirname $(readlink -m ${0}))
+BUILD_DIR="${ROOT}/../build"
+EXE_DIR="${BUILD_DIR}/test/linux"
 EXE_BIN="\
 ${EXE_DIR}/red_test/red_test \
 ${EXE_DIR}/simple_test/simple_test \
 ${EXE_DIR}/slaveinfo/slaveinfo"
-SYSD_SCRIPT="moxa-soem.service"
-START_SCRIPT="start.sh"
+SYSD_SCRIPT="${ROOT}/moxa-soem.service"
+START_SCRIPT="${ROOT}/start.sh"
 
 if [ ${EUID} -ne 0 ]
 then

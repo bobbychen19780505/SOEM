@@ -11,4 +11,5 @@ elif [ -e "/sys/class/leds/UC8200:GREEN:USR/trigger" ]; then
 	echo "heartbeat" > /sys/class/leds/UC8200:GREEN:USR/trigger
 fi
 
-/usr/sbin/soem/simple_test -q eth1
+stty -F /dev/ttyUSB0 115200
+/usr/sbin/soem/simple_test eth1 2&>1 > /dev/ttyUSB0
