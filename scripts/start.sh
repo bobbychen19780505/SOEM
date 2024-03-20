@@ -7,8 +7,9 @@ fi
 
 if [ -e "/sys/class/leds/USR:green:programming/trigger" ]; then
 	echo "heartbeat" > /sys/class/leds/USR:green:programming/trigger
-elif [ -e "/sys/class/leds/UC8200:GREEN:USR/trigger" ]; then
-	echo "heartbeat" > /sys/class/leds/UC8200:GREEN:USR/trigger
+elif [ -e "/sys/class/leds/UC8200:GREEN:USR4-2/trigger" ]; then
+	echo "heartbeat" > /sys/class/leds/UC8200:GREEN:USR4-2/trigger
+	mx-uart-ctl -p 0 -m 0
 fi
 
 stty -F /dev/ttyUSB0 115200
