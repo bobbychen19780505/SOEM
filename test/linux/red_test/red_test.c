@@ -27,6 +27,7 @@
 #define NSEC_PER_SEC 1000000000
 #define EC_TIMEOUTMON 500
 #define CHK_TIMEOUT 30
+#define D4_TEST_COUNT 1000
 
 struct sched_param schedp;
 char IOmap[4096];
@@ -51,6 +52,7 @@ int quiet = 0;
 void redtest(char *ifname, char *ifname2)
 {
 	int cnt, i, j, k, oloop, iloop, chk, chk1;
+	int count = D4_TEST_COUNT;
 
 	printf("Starting Redundant test\n");
 
@@ -135,7 +137,8 @@ void redtest(char *ifname, char *ifname2)
 					printf("Operational state reached for all slaves.\n");
 					inOP = TRUE;
 					/* acyclic loop */
-					while(wkc > 0 && inOP)
+					count = D4_TEST_COUNT;
+					while((wkc > 0) && inOP && count--)
 					{
 						if (!quiet) {
 							for(k = 1; k <= ec_slavecount ; k++) {
@@ -149,7 +152,7 @@ void redtest(char *ifname, char *ifname2)
 								{
 									if (ec_slave[k].Ibytes > 0) printf("%2.2x", *(ec_slave[k].inputs + j));
 								}
-								printf(" T:%12"PRId64", dt:%12"PRId64"\n", ec_DCtime, gl_delta);
+								printf(" T:%12"PRId64", dt:%12"PRId64", count:%d\n", ec_DCtime, gl_delta, count);
 								needlf = TRUE;
 								fflush(stdout);
 							}

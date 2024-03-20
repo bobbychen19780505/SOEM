@@ -12,5 +12,5 @@ elif [ -e "/sys/class/leds/UC8200:GREEN:USR/trigger" ]; then
 fi
 
 stty -F /dev/ttyUSB0 115200
-#/usr/sbin/soem/simple_test -q eth1 10000 > /dev/ttyUSB0 2&>1
-/usr/sbin/soem/red_test -q eth0 eth1 10000 > /dev/ttyUSB0 2&>1
+#/usr/sbin/soem/simple_test -q eth0 10000 2&>1 > /dev/ttyUSB0
+/usr/sbin/soem/red_test -q eth0 eth1 10000 2&>1 > /dev/ttyUSB0

@@ -19,6 +19,7 @@
 #define EC_TIMEOUTMON 500
 
 #define CHK_TIMEOUT 30
+#define D4_TEST_COUNT 1000
 
 char IOmap[4096];
 OSAL_THREAD_HANDLE thread1;
@@ -33,6 +34,8 @@ int quiet = 0;
 void simpletest(char *ifname)
 {
 	int i, j, k, oloop, iloop, chk, chk1;
+	int count = D4_TEST_COUNT;
+
 	needlf = FALSE;
 	inOP = FALSE;
 
@@ -132,6 +135,7 @@ void simpletest(char *ifname)
 				printf("Operational state reached for all slaves.\n");
 				inOP = TRUE;
 				/* cyclic loop */
+				count = D4_TEST_COUNT;
 				do
 				{
 					ec_send_processdata();
@@ -139,8 +143,6 @@ void simpletest(char *ifname)
 
 					if(wkc >= expectedWKC)
 					{
-						if (!quiet) printf("Processdata data, WKC %d :\n", wkc);
-
 						for(k = 1; k <= ec_slavecount ; k++) {
 							if (ec_slave[k].Ibytes > 0) {
 								if (*((uint64*)ec_slave[k].inputs) == 0) {
@@ -154,7 +156,7 @@ void simpletest(char *ifname)
 							/* Dump data of each slaves */
 							if (!quiet)
 							{
-								printf(" [Slave %d 0x%04x] O:", k, ec_slave[k].configadr);
+								printf(" (%3d) [Slave %d 0x%04x] O:", wkc, k, ec_slave[k].configadr);
 								for(j = oloop - 1 ; j >= 0; j--)
 								{
 									if (ec_slave[k].Obytes > 0) printf("%2.2x", *(ec_slave[k].outputs + j));
@@ -164,13 +166,13 @@ void simpletest(char *ifname)
 								{
 									if (ec_slave[k].Ibytes > 0) printf("%2.2x", *(ec_slave[k].inputs + j));
 								}
-								printf(" T:%"PRId64"\n", ec_DCtime);
+								printf(" T:%"PRId64", count:%d\n", ec_DCtime, count);
 								needlf = TRUE;
 							}
 						}
 					}
 					osal_usleep(20000);
-				} while (wkc > 0 && inOP);
+				} while ((wkc > 0) && inOP && count--);
 				inOP = FALSE;
 			}
 			else
