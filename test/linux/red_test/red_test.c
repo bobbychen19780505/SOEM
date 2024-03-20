@@ -371,10 +371,12 @@ int main(int argc, char *argv[])
 		argv++;
 	}
 
-	if (argc > 3)
+	if (argc > 2)
 	{
 		dorun = 0;
-		ctime = atoi(argv[3]);
+		if (argc > 3) {
+			ctime = atoi(argv[3]);
+		}
 
 		/* create RT thread */
 		osal_thread_create_rt(&thread1, stack64k * 2, &ecatthread, (void*) &ctime);
