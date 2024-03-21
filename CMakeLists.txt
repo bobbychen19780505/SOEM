@@ -5,6 +5,20 @@ project(SOEM
     VERSION 1.4.0
     LANGUAGES C)
 
+if(DEFINED APP_VERSION)
+  message(STATUS "APP_VERSION is ${APP_VERSION}")
+  add_definitions(-DAPP_VERSION="${APP_VERSION}")
+else()
+  message(STATUS "APP_VERSION is not defined")
+endif()
+
+if(DEFINED BUILD_DATE)
+  message(STATUS "BUILD_DATE is ${BUILD_DATE}")
+  add_definitions(-DDATE="${BUILD_DATE}")
+else()
+  message(STATUS "BUILD_DATE is not defined")
+endif()
+
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   # Default to installing in SOEM source directory
   set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_LIST_DIR}/install)

@@ -1,6 +1,6 @@
 
 PACKAGE_NAME := "moxa-soem"
-VERSION := "1.0.0.3"
+VERSION := "1.0.0.4"
 ARCH := "all"
 MAINTAINER := "Bobby Chen \<bobby.chen@moxa.com\>"
 DEPENDS := ""
@@ -25,37 +25,38 @@ DEB_OUT_PATH ?= "$(ROOT_DIR)/../../deb"
 
 BUILD_ROOT ?= "$(ROOT_DIR)/build"
 TOOLCHAIN_FILE ?= "$(ROOT_DIR)/arm-linux-gnueabihf.cmake"
+POSTINST_FILE ?= "$(ROOT_DIR)/scripts/postinst"
 
 
 .PHONY: all install clean test distclean
 
 all: 
-	@./build.sh
+	@$(ROOT_DIR)/build.sh $(VERSION)
 
 test:
 
 clean:
-	@./build.sh clean
+	@$(ROOT_DIR)/build.sh clean
 
 distclean: clean
-	@./build.sh distclean
+	@$(ROOT_DIR)/build.sh distclean
 	@rm -rf $(PREFIX)
 	@rm -rf $(OUTPUT_PATH)
 
 install:
 	@mkdir -p $(PREFIX)/usr/sbin/soem
 	@mkdir -p $(PREFIX)/lib/systemd/system
-	@cp -f ./build/test/linux/red_test/red_test $(PREFIX)/usr/sbin/soem
-	@cp -f ./build/test/linux/simple_test/simple_test $(PREFIX)/usr/sbin/soem
-	@cp -f ./build/test/linux/slaveinfo/slaveinfo $(PREFIX)/usr/sbin/soem
-	@cp -f ./scripts/start.sh $(PREFIX)/usr/sbin/soem
-	@cp -f ./scripts/moxa-soem.service $(PREFIX)/lib/systemd/system/moxa-soem.service
+	@cp -f $(BUILD_ROOT)/test/linux/red_test/red_test $(PREFIX)/usr/sbin/soem
+	@cp -f $(BUILD_ROOT)/test/linux/simple_test/simple_test $(PREFIX)/usr/sbin/soem
+	@cp -f $(BUILD_ROOT)/test/linux/slaveinfo/slaveinfo $(PREFIX)/usr/sbin/soem
+	@cp -f $(ROOT_DIR)/scripts/start.sh $(PREFIX)/usr/sbin/soem
+	@cp -f $(ROOT_DIR)/scripts/moxa-soem.service $(PREFIX)/lib/systemd/system/moxa-soem.service
 
 deb:
 	@echo "[INFO] Create debian package file (control)." ;\
 	rm -rf $(PREFIX)/DEBIAN ;\
 	mkdir -p $(PREFIX)/DEBIAN ;\
-	cp -f ./scripts/postinst $(PREFIX)/DEBIAN ;\
+	if [ -e $(POSTINST_FILE) ]; then cp -f $(POSTINST_FILE) $(PREFIX)/DEBIAN; fi ;\
 	echo "Package: $(PACKAGE_NAME)" > $(PREFIX)/DEBIAN/control ;\
 	echo "Version: $(VERSION)" >> $(PREFIX)/DEBIAN/control ;\
 	echo "Architecture: $(ARCH)" >> $(PREFIX)/DEBIAN/control ;\

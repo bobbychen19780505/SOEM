@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
 {
 	int ctime = 10000;
 
-	printf("SOEM (Simple Open EtherCAT Master)\nSimple test\nVersion %s\n", APP_VERSION);
+	printf("SOEM (Simple Open EtherCAT Master)\nSimple test\nVersion %s (%s)\n", APP_VERSION, DATE);
 
 	if ((argc > 1) && (argv[1][0] == '-') && (argv[1][1] == 'q'))
 	{
