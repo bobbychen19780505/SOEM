@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ROOT=$(dirname $(readlink -m ${0}))
-BUILD_DIR="${ROOT}/../build"
+BUILD_DIR="${ROOT}/../build/x86_64"
 EXE_DIR="${BUILD_DIR}/test/linux"
 EXE_BIN="\
 ${EXE_DIR}/red_test/red_test \

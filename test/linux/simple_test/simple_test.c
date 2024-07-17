@@ -34,7 +34,6 @@ int quiet = 0;
 void simpletest(char *ifname)
 {
 	int i, j, k, oloop, iloop, chk, chk1;
-	int count = D4_TEST_COUNT;
 
 	needlf = FALSE;
 	inOP = FALSE;
@@ -135,7 +134,6 @@ void simpletest(char *ifname)
 				printf("Operational state reached for all slaves.\n");
 				inOP = TRUE;
 				/* cyclic loop */
-				count = D4_TEST_COUNT;
 				do
 				{
 					ec_send_processdata();
@@ -166,13 +164,13 @@ void simpletest(char *ifname)
 								{
 									if (ec_slave[k].Ibytes > 0) printf("%2.2x", *(ec_slave[k].inputs + j));
 								}
-								printf(" T:%"PRId64", count:%d\n", ec_DCtime, count);
+								printf(" T:%"PRId64"\n", ec_DCtime);
 								needlf = TRUE;
 							}
 						}
 					}
 					osal_usleep(20000);
-				} while ((wkc > 0) && inOP && count--);
+				} while ((wkc > 0) && inOP);
 				inOP = FALSE;
 			}
 			else
